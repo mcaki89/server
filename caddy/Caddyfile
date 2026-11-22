@@ -1,0 +1,18 @@
+# Zentraler Caddy für mcfactory.ch
+# Caddy holt die HTTPS-Zertifikate selbst (Let's Encrypt), erneuert sie und leitet http:// auf https:// um.
+# Alle vier Adressen gehen an denselben Container mcf-web (Repo pips-journey, Netzwerk "proxy").
+# mcf-web verteilt dann selbst weiter: /api und /ws an pip-server, ShopTrail an shoptrail-server.
+# WebSocket (wss://pip.mcfactory.ch/ws) läuft automatisch mit, über Port 443. Spiel-Ports braucht es keine.
+#
+# Nach einer Änderung:  cd /opt/server/caddy && sudo docker compose exec -w /etc/caddy caddy caddy reload
+
+{
+	# An diese Adresse schreibt Let's Encrypt, falls mit einem Zertifikat etwas nicht stimmt
+	email support@mcfactory.ch
+}
+
+mcfactory.ch, www.mcfactory.ch, pip.mcfactory.ch, shoptrail.mcfactory.ch {
+	reverse_proxy mcf-web:8080
+	# Versionsnummer nicht verraten
+	header -Server
+}

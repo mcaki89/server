@@ -1,3 +1,30 @@
-# server
+# server – der VPS mcfactory.ch
 
-Alles, was den ganzen VPS mcfactory.ch betrifft.
+Hier liegt alles, was den **ganzen Server** betrifft. Die einzelnen Apps (pips-journey, shoptrail) haben ihre `compose.yaml` in ihren eigenen Repos.
+
+```
+Internet ─► Caddy (dieses Repo, Ports 80/443, holt die Zertifikate selbst)
+              │  Docker-Netzwerk "proxy"
+              ▼
+           mcf-web :8080  (Repo pips-journey)
+              ├─ mcfactory.ch, www.mcfactory.ch   → Firmenseite
+              ├─ pip.mcfactory.ch                 → Projektseite, /api und /ws → pip-server
+              └─ shoptrail.mcfactory.ch           → Projektseite, /api … → shoptrail-server (Repo shoptrail)
+```
+
+Spiel-Ports gibt es keine: Die Online-Runden laufen per WebSocket über `wss://pip.mcfactory.ch/ws`, also über 443.
+
+## Was wo liegt
+
+| Datei | Wofür |
+|---|---|
+| `caddy/Caddyfile` | Alle vier Adressen → `mcf-web:8080` |
+| `caddy/compose.yaml` | Der Caddy-Container (einziger mit Ports nach aussen) |
+| `einrichten/01-docker.sh` | Docker installieren, Netzwerk `proxy` anlegen |
+| `einrichten/02-firewall.sh` | ufw: nur SSH, 80 und 443 offen |
+| `einrichten/03-updates.sh` | Automatische Sicherheits-Updates (auch Docker), Neustart bei Bedarf um 04:00 |
+| `einrichten/04-backup.sh` | Tägliche Sicherung nach `/var/backups/server` (14 Tage) |
+| `einrichten/05-ssh.sh` | Anmeldung nur mit Schlüssel, fail2ban |
+| `ANLEITUNG.md` | **Umstellung Schritt für Schritt** zusammen mit pips-journey und shoptrail |
+
+Alle Skripte kann man mehrmals laufen lassen, sie richten jedes Mal denselben Stand ein. Auf dem Server liegt das Repo unter `/opt/server`.
