@@ -25,6 +25,7 @@ Spiel-Ports gibt es keine: Die Online-Runden laufen per WebSocket über `wss://p
 | `einrichten/03-updates.sh` | Automatische Sicherheits-Updates (auch Docker), Neustart bei Bedarf um 04:00 |
 | `einrichten/04-backup.sh` | Tägliche Sicherung nach `/var/backups/server` (14 Tage) |
 | `einrichten/05-ssh.sh` | Anmeldung nur mit Schlüssel, fail2ban |
+| `einrichten/06-container-updates.sh` | Container jeden Montag 04:30 aktualisieren, bei Problemen zurück auf die alte Version |
 | `ANLEITUNG.md` | **Umstellung Schritt für Schritt** zusammen mit pips-journey und shoptrail |
 
 Alle Skripte kann man mehrmals laufen lassen, sie richten jedes Mal denselben Stand ein. Auf dem Server liegt das Repo unter `/opt/server`.
