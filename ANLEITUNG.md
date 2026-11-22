@@ -1,6 +1,6 @@
 # Umstellung auf Docker + Caddy
 
-Stand 22.11.2026: Alles ist vorbereitet. Auf dem Server ist noch **nichts** geändert.
+Stand 22.11.2026: **Umgestellt.** Alle Seiten laufen über Docker und Caddy. Diese Anleitung beschreibt, wie es gemacht wurde (und hilft, falls der Server je neu aufgesetzt werden muss).
 
 Es gehören drei Pull Requests zusammen:
 
@@ -25,14 +25,18 @@ Wenn etwas nicht klappt: unten bei **Zurück**. Die Daten werden nie verschoben,
 
 ## Teil A – Grundlage (kein Unterbruch)
 
-**A1. Repo auf den Server kopieren.** Auf dem Mac, im Ordner, in dem das Repo `server` liegt:
+Auf den Server kommen nur Dateien, kein Git und kein GitHub-Zugang (wie bisher bei den Apps). Angemeldet wird mit `ssh mcf`.
+
+**A1. Dateien auf den Server kopieren.** Auf dem Mac (in GitHub Desktop vorher `main` holen):
 ```bash
-scp -r server murat@mcfactory.ch:/tmp/server
+ssh mcf mkdir -p /tmp/server
+scp -r ~/Documents/GitHub/server/caddy ~/Documents/GitHub/server/einrichten mcf:/tmp/server/
 ```
-Dann auf dem Server (`ssh murat@mcfactory.ch`):
+Dann auf dem Server (`ssh mcf`):
 ```bash
 sudo mkdir -p /opt/server && sudo cp -r /tmp/server/. /opt/server/ && rm -rf /tmp/server
 ```
+(`rsync` gibt es auf dem Server nicht, darum `scp`.)
 
 **A2. Docker und Netzwerk `proxy`:**
 ```bash
@@ -57,12 +61,27 @@ Das zweite Skript macht gleich eine erste Sicherung und zeigt, wie gross sie ist
 ```bash
 sudo bash /opt/server/einrichten/05-ssh.sh
 ```
-Danach auf dem Mac ein **zweites** Terminal öffnen und `ssh murat@mcfactory.ch` testen. Geht das, ist alles gut. Geht es nicht, im ersten Fenster `sudo rm /etc/ssh/sshd_config.d/10-server.conf && sudo systemctl reload ssh` und mir Bescheid geben.
+Danach auf dem Mac ein **zweites** Terminal öffnen und `ssh mcf` testen. Geht das, ist alles gut. Geht es nicht, im ersten Fenster `sudo rm /etc/ssh/sshd_config.d/10-server.conf && sudo systemctl reload ssh` und mir Bescheid geben.
 Ist noch kein SSH-Schlüssel hinterlegt, bleibt die Passwort-Anmeldung an, und das Skript sagt, was zu tun ist.
 
 ## Teil B – Sicherung und Container bauen (kein Unterbruch)
 
-Genau wie in `pips-journey/docker/ANLEITUNG-DOCKER.md`, **Schritt 1** (Sicherung nach `/root/vor-docker`) und **Schritt 2** (Dateien nach `/opt/pips-journey` und `/opt/shoptrail/server`, `.env` anlegen, `docker compose build`).
+Genau wie in `pips-journey/docker/ANLEITUNG-DOCKER.md`, **Schritt 1** (Sicherung nach `/root/vor-docker`) und **Schritt 2** (`.env` anlegen, `docker compose build`).
+
+Die Dateien kommen so vom Mac (beide Repos sind privat, darum nicht per `git clone`, sondern aus den Ordnern von GitHub Desktop, vorher `main` holen). `git archive` nimmt nur, was im Repo ist, also keine Testdaten oder geheimen Dateien:
+```bash
+cd ~/Documents/GitHub/pips-journey
+git archive --format=tar.gz main .dockerignore website server docker | ssh mcf 'rm -rf ~/pj-upload && mkdir -p ~/pj-upload && tar xzf - -C ~/pj-upload'
+cd ~/Documents/GitHub/shoptrail
+git archive --format=tar.gz --prefix=shoptrail-server/ main:server -o /tmp/shoptrail-server.tar.gz && scp /tmp/shoptrail-server.tar.gz mcf:/tmp/
+```
+Auf dem Server:
+```bash
+sudo mkdir -p /opt/pips-journey && sudo cp -a ~/pj-upload/. /opt/pips-journey/ && rm -rf ~/pj-upload
+cd /tmp && tar xzf shoptrail-server.tar.gz && sudo mv /opt/shoptrail/server /opt/shoptrail/server.alt && sudo mv /tmp/shoptrail-server /opt/shoptrail/server && sudo chown -R root:root /opt/shoptrail/server && rm /tmp/shoptrail-server.tar.gz
+```
+
+**Achtung `$` in Passwörtern:** Docker liest in `/etc/shoptrail/shoptrail.env` ein `$` als Platzhalter (Warnung `The "…" variable is not set`). Solche Werte in einfache Anführungszeichen setzen, z. B. `SMTP_PASS='ab$cd'`. Das versteht auch der alte systemd-Dienst.
 
 ## Teil C – Umschalten (kurzer Unterbruch)
 
@@ -74,7 +93,7 @@ cd /opt/pips-journey/docker && sudo docker compose up -d
 sudo systemctl disable --now nginx
 ```
 
-**C2.** Jetzt sind 80 und 443 frei. Caddy starten:
+**C2.** Jetzt sind 80 und 443 frei. Caddy starten (vorher, ohne Unterbruch, schon `sudo docker compose pull` im selben Ordner, dann geht es schneller):
 ```bash
 cd /opt/server/caddy && sudo docker compose up -d
 sudo docker logs -f caddy
