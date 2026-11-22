@@ -1,0 +1,3 @@
+# Zertifikate und Laufzeitdaten von Caddy gehören nicht ins Repository
+caddy/data/
+caddy/config/
