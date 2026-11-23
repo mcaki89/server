@@ -147,3 +147,53 @@ Docker, Firewall, SSH, Updates und Backups (Teil A) dürfen bleiben, sie stören
   auf dem Server `sudo cp /var/backups/server/server-$(date +%F).tgz ~/ && sudo chown $USER ~/server-*.tgz`,
   auf dem Mac `scp murat@mcfactory.ch:'server-*.tgz' ~/Backups/`, danach auf dem Server `rm ~/server-*.tgz`.
 - **Gesperrte IPs (SSH):** `sudo fail2ban-client status sshd`
+
+---
+
+## Sicherung ausser Haus einrichten (`einrichten/07-backup-extern.sh`)
+
+Täglich um 04:15 geht eine **verschlüsselte** Kopie zu einem zweiten Anbieter (restic). Gesichert wird alles, was man nicht einfach neu installieren kann: `/etc` (Einstellungen, auch `/etc/shoptrail/shoptrail.env`), ganz `/opt` (Caddy samt Zertifikaten, Spiel-Daten, `.env`-Dateien), die ShopTrail-Datenbank-Kopien, `/root` und `/home`. Aufbewahrt werden 7 Tage, 4 Wochen und 12 Monate. Sonntags wird ein Teil der Daten zur Kontrolle gelesen.
+
+**Regel für neue Apps:** Daten und Einstellungen liegen unter `/opt/<app>` (oder in `/etc`). Dann sind sie automatisch in der Sicherung, ohne dass man etwas ändern muss.
+
+### 1. Konto und Ablage anlegen (einmalig, im Browser)
+
+**Variante A: Backblaze B2** (Rechenzentrum Amsterdam, bis 10 GB gratis)
+1. Auf backblaze.com ein Konto anlegen. Bei der Anmeldung als Region **EU Central** wählen (lässt sich später nicht ändern).
+2. *Buckets → Create a Bucket*: Name z. B. `mcfactory-sicherung-XYZ` (muss weltweit eindeutig sein), **Private**, **Object Lock: Enable**. Danach beim Bucket *Object Lock → Default Retention*: **Governance, 30 Tage**. So kann nicht einmal jemand mit Zugriff auf den Server die Sicherungen der letzten 30 Tage löschen.
+3. *Application Keys → Add a New Application Key*: nur für diesen Bucket, *Read and Write*. Die angezeigten `keyID` und `applicationKey` gleich notieren, der zweite wird nur einmal angezeigt.
+4. Beim Bucket den **Endpoint** ablesen (z. B. `s3.eu-central-003.backblazeb2.com`).
+
+**Variante B: Hetzner Storage Box** (etwa 4 € pro Monat)
+1. Storage Box BX11 bestellen, in der Verwaltung **SSH-Unterstützung** einschalten und **automatische Snapshots** (täglich, 10 behalten) aktivieren. Die Snapshots kann der Server selbst nicht löschen.
+2. Auf dem Server einen Schlüssel für root anlegen und hinterlegen (`uXXXXXX` durch deinen Benutzer ersetzen):
+   ```bash
+   sudo ssh-keygen -t ed25519 -N '' -f /root/.ssh/id_ed25519
+   sudo cat /root/.ssh/id_ed25519.pub | ssh -p 23 uXXXXXX@uXXXXXX.your-storagebox.de install-ssh-key
+   printf 'Host uXXXXXX.your-storagebox.de\n  Port 23\n' | sudo tee -a /root/.ssh/config
+   ```
+
+### 2. Auf dem Server einrichten
+
+```bash
+sudo bash /opt/server/einrichten/07-backup-extern.sh     # legt /etc/restic/ziel.env als Vorlage an
+sudo nano /etc/restic/ziel.env                           # eine Variante ausfüllen (# davor entfernen), speichern
+sudo bash /opt/server/einrichten/07-backup-extern.sh     # legt die Ablage an und macht die erste Sicherung
+```
+Am Ende zeigt das Skript **einmal** den Verschlüsselungs-Schlüssel. **Den sofort in den Passwort-Manager kopieren**, dazu den Inhalt von `/etc/restic/ziel.env`. Fällt der Server aus, ist das der einzige Weg an die Daten.
+
+### 3. Zurückholen testen (einmal jetzt, danach etwa alle 3 Monate)
+
+```bash
+sudo bash -c 'set -a; . /etc/restic/ziel.env; set +a; export RESTIC_PASSWORD_FILE=/etc/restic/passwort
+  restic snapshots --compact
+  rm -rf /tmp/probe && restic restore latest --target /tmp/probe --include /opt/pip-server/data
+  ls -la /tmp/probe/opt/pip-server/data && rm -rf /tmp/probe'
+```
+Zeigt die Liste die Spiel-Daten, funktioniert die Sicherung.
+
+**Im Alltag:** Von Hand sichern: `sudo backup-extern` · Protokoll: `sudo tail -20 /var/log/backup-extern.log`
+
+### Dazu empfohlen: Snapshots bei netcup
+
+Im netcup Server Control Panel unter *Medien → Snapshots* vor grösseren Änderungen einen Snapshot anlegen. Damit ist im Notfall der ganze Server in Minuten zurück. Das ergänzt die Sicherung ausser Haus, ersetzt sie aber nicht (liegt beim selben Anbieter).
