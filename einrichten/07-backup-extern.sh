@@ -7,6 +7,7 @@
 # Aufruf:  sudo bash /opt/server/einrichten/07-backup-extern.sh
 set -euo pipefail
 [ "$(id -u)" -eq 0 ] || { echo "Bitte mit sudo starten."; exit 1; }
+. "$(dirname "$0")/_meldung.sh"; installiere_meldung
 export DEBIAN_FRONTEND=noninteractive
 command -v restic >/dev/null || { apt-get update -q >/dev/null; apt-get install -y -q restic >/dev/null; }
 
@@ -72,7 +73,7 @@ chmod 750 /usr/local/sbin/backup-extern
 
 cat > /etc/cron.d/backup-extern <<'CRON'
 # Repo "server": verschlüsselte Sicherung ausser Haus, täglich 04:15 (nach der lokalen Sicherung 03:45 und einem möglichen Neustart 04:00)
-15 4 * * * root /usr/local/sbin/backup-extern >/dev/null 2>&1
+15 4 * * * root /usr/local/sbin/mit-meldung backup-extern /usr/local/sbin/backup-extern >/dev/null 2>&1
 CRON
 cat > /etc/logrotate.d/backup-extern <<'ROT'
 /var/log/backup-extern.log {
@@ -84,8 +85,10 @@ cat > /etc/logrotate.d/backup-extern <<'ROT'
 }
 ROT
 
+set -a
 # shellcheck disable=SC1090
-set -a; . "$ZIEL"; set +a
+. "$ZIEL"
+set +a
 export RESTIC_PASSWORD_FILE="$PW"
 if restic cat config >/dev/null 2>&1; then
   echo "== Sicherungs-Ablage gibt es schon."
