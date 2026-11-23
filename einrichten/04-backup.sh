@@ -4,6 +4,7 @@
 # Aufruf:  sudo bash /opt/server/einrichten/04-backup.sh
 set -euo pipefail
 [ "$(id -u)" -eq 0 ] || { echo "Bitte mit sudo starten."; exit 1; }
+. "$(dirname "$0")/_meldung.sh"; installiere_meldung
 
 cat > /usr/local/sbin/server-backup <<'SKRIPT'
 #!/usr/bin/env bash
@@ -43,7 +44,7 @@ chmod 750 /usr/local/sbin/server-backup
 
 cat > /etc/cron.d/server-backup <<'CRON'
 # Repo "server": täglich um 03:45 alles sichern (nach der ShopTrail-Kopie um 03:30, vor einem möglichen Update-Neustart um 04:00)
-45 3 * * * root /usr/local/sbin/server-backup >/dev/null
+45 3 * * * root /usr/local/sbin/mit-meldung server-backup /usr/local/sbin/server-backup >/dev/null
 CRON
 chmod 644 /etc/cron.d/server-backup
 

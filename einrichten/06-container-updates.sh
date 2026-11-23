@@ -6,6 +6,7 @@
 # Aufruf:  sudo bash /opt/server/einrichten/06-container-updates.sh
 set -euo pipefail
 [ "$(id -u)" -eq 0 ] || { echo "Bitte mit sudo starten."; exit 1; }
+. "$(dirname "$0")/_meldung.sh"; installiere_meldung
 
 cat > /usr/local/sbin/container-update <<'SKRIPT'
 #!/usr/bin/env bash
@@ -72,7 +73,7 @@ chmod 750 /usr/local/sbin/container-update
 
 cat > /etc/cron.d/container-update <<'CRON'
 # Repo "server": Container jeden Montag um 04:30 aktualisieren (nach Sicherung 03:45 und möglichem Neustart 04:00)
-30 4 * * 1 root /usr/local/sbin/container-update >/dev/null 2>&1
+30 4 * * 1 root /usr/local/sbin/mit-meldung container-update /usr/local/sbin/container-update >/dev/null 2>&1
 CRON
 chmod 644 /etc/cron.d/container-update
 
