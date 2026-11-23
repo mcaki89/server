@@ -147,6 +147,7 @@ Docker, Firewall, SSH, Updates und Backups (Teil A) dürfen bleiben, sie stören
   auf dem Server `sudo cp /var/backups/server/server-$(date +%F).tgz ~/ && sudo chown $USER ~/server-*.tgz`,
   auf dem Mac `scp murat@mcfactory.ch:'server-*.tgz' ~/Backups/`, danach auf dem Server `rm ~/server-*.tgz`.
 - **Gesperrte IPs (SSH):** `sudo fail2ban-client status sshd`
+- **Überwachung:** UptimeRobot prüft alle 5 Minuten die Seiten und `/api/health` von Pip und ShopTrail (Keyword `"ok":true`) und schickt bei einem Ausfall eine Mail. Fehler im Server selbst (Sicherung, Container-Update, volle Festplatte) meldet der Server per Mail, siehe unten.
 
 ---
 
@@ -209,3 +210,21 @@ Zeigt die Liste die Spiel-Daten, funktioniert die Sicherung.
 ### Dazu empfohlen: Snapshots bei netcup
 
 Im netcup Server Control Panel unter *Medien → Snapshots* vor grösseren Änderungen einen Snapshot anlegen. Damit ist im Notfall der ganze Server in Minuten zurück. Das ergänzt die Sicherung ausser Haus, ersetzt sie aber nicht (liegt beim selben Anbieter).
+
+## Fehler-Mails einrichten (`einrichten/08-meldungen.sh`)
+
+Schlägt eine Sicherung (`server-backup`, `backup-extern`) oder ein Container-Update fehl, oder ist die Festplatte über 85 % voll (Prüfung täglich 08:00), kommt eine Mail mit den letzten Zeilen des Protokolls. Läuft alles gut, kommt nichts.
+Verschickt wird über dasselbe Postfach wie bei ShopTrail (Infomaniak, Port 465). Das Skript übernimmt die Angaben aus `/etc/shoptrail/shoptrail.env` nach `/etc/server-meldungen.env` (nur für root lesbar), das Passwort wird dabei nicht angezeigt.
+
+In GitHub Desktop beim Repo `server` zuerst **Pull**, dann auf dem Mac den ganzen Ordner `einrichten` hochladen (die Skripte 04, 06 und 07 haben sich auch geändert):
+```bash
+scp -r ~/Documents/GitHub/server/einrichten mcf:/tmp/
+```
+Auf dem Server:
+```bash
+sudo cp /tmp/einrichten/* /opt/server/einrichten/ && rm -r /tmp/einrichten
+sudo bash /opt/server/einrichten/08-meldungen.sh
+```
+Es fragt nach der Empfänger-Adresse und schickt eine Test-Mail. Kommt sie nicht an, auch im Spam-Ordner schauen.
+
+**Im Alltag:** Test-Mail von Hand: `echo Test | sudo server-mail "Test"` · Empfänger ändern: Skript nochmals starten.
