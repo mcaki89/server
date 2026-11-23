@@ -160,8 +160,9 @@ Täglich um 04:15 geht eine **verschlüsselte** Kopie zu einem zweiten Anbieter 
 
 **Variante A: Backblaze B2** (Rechenzentrum Amsterdam, bis 10 GB gratis)
 1. Auf backblaze.com ein Konto anlegen. Bei der Anmeldung als Region **EU Central** wählen (lässt sich später nicht ändern).
-2. *Buckets → Create a Bucket*: Name z. B. `mcfactory-sicherung-XYZ` (muss weltweit eindeutig sein), **Private**, **Object Lock: Enable**. Danach beim Bucket *Object Lock → Default Retention*: **Governance, 30 Tage**. So kann nicht einmal jemand mit Zugriff auf den Server die Sicherungen der letzten 30 Tage löschen.
-3. *Application Keys → Add a New Application Key*: nur für diesen Bucket, *Read and Write*. Die angezeigten `keyID` und `applicationKey` gleich notieren, der zweite wird nur einmal angezeigt.
+2. *Buckets → Create a Bucket*: Name z. B. `mcfactory-sicherung-XYZ` (muss weltweit eindeutig sein), **Private**, **Object Lock: Enable**. Danach beim Bucket *Object Lock*: **30 Tage**. Die Weboberfläche setzt dabei den Modus **Compliance** (am 23.11.2026 per API geprüft, siehe unten). Wichtig, weil ein Schlüssel mit *Read and Write* auch `bypassGovernance` bekommt: Im Modus Governance könnte er den Schutz umgehen, in Compliance kann das niemand. So kann nicht einmal jemand mit Zugriff auf den Server die Sicherungen der letzten 30 Tage löschen.
+   Bei *Lifecycle-Einstellungen*: **Keep prior versions for this number of days: 31**. Dann räumt Backblaze alte Versionen nach Ablauf des Schutzes selbst weg.
+3. *Application Keys → Add a New Application Key*: Name `mcfactory-server`, nur für diesen Bucket, *Read and Write*, Häkchen bei *Allow List All Bucket Names*. **Nicht** den Master Key nehmen. `keyID` und `applicationKey` direkt in den Passwort-Manager kopieren (der zweite wird nur einmal angezeigt), nie als Screenshot weitergeben.
 4. Beim Bucket den **Endpoint** ablesen (z. B. `s3.eu-central-003.backblazeb2.com`).
 
 **Variante B: Hetzner Storage Box** (etwa 4 € pro Monat)
@@ -174,6 +175,17 @@ Täglich um 04:15 geht eine **verschlüsselte** Kopie zu einem zweiten Anbieter 
    ```
 
 ### 2. Auf dem Server einrichten
+
+Den Zugang so eintragen, dass er nirgends angezeigt wird (fragt nach `keyID` und `applicationKey`):
+```bash
+sudo install -d -m 700 /etc/restic
+sudo bash -c 'read -p "keyID: " K; read -s -p "applicationKey: " S; echo; printf "RESTIC_REPOSITORY=s3:https://s3.eu-central-003.backblazeb2.com/mcfactory-sicherung-k7q2\nAWS_ACCESS_KEY_ID=%s\nAWS_SECRET_ACCESS_KEY=%s\n" "$K" "$S" > /etc/restic/ziel.env; chmod 600 /etc/restic/ziel.env'
+```
+Object-Lock-Modus prüfen (muss `COMPLIANCE` und `30` zeigen):
+```bash
+sudo bash -c 'set -a; . /etc/restic/ziel.env; set +a; curl -s --aws-sigv4 "aws:amz:eu-central-003:s3" --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" "https://s3.eu-central-003.backblazeb2.com/mcfactory-sicherung-k7q2?object-lock"; echo'
+```
+Danach das Skript starten (ist `ziel.env` schon da, legt es keine Vorlage an):
 
 ```bash
 sudo bash /opt/server/einrichten/07-backup-extern.sh     # legt /etc/restic/ziel.env als Vorlage an
