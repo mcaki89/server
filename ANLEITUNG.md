@@ -138,7 +138,8 @@ Docker, Firewall, SSH, Updates und Backups (Teil A) dürfen bleiben, sie stören
 - **Läuft alles?** `sudo docker ps` · Protokoll von Caddy: `sudo docker logs caddy --tail 50`
 - **Caddyfile geändert?** Neue Datei nach `/opt/server/caddy/` kopieren, dann
   `cd /opt/server/caddy && sudo docker compose exec -w /etc/caddy caddy caddy reload` (ohne Unterbruch).
-- **Caddy aktualisieren** (etwa einmal im Monat): `cd /opt/server/caddy && sudo docker compose pull && sudo docker compose up -d`
+- **Container-Updates** laufen jeden Montag um 04:30 von selbst (`einrichten/06-container-updates.sh`): Caddy wird neu geholt, mcf-web, pip-server und shoptrail-server werden mit den neusten Grundbausteinen (nginx, Node) neu gebaut. Ist nichts neu, startet auch nichts neu. Läuft eine neue Version nicht sauber, kommt die vorherige automatisch zurück.
+  Von Hand: `sudo container-update` · Protokoll: `sudo tail -30 /var/log/container-update.log`
 - **System-Updates** kommen von selbst jede Nacht. Braucht ein Update einen Neustart, startet der Server um 04:00 neu und alle Container laufen danach von selbst wieder.
 - **Sicherungen:** täglich um 03:45 nach `/var/backups/server/server-DATUM.tgz`, 14 Tage lang. Von Hand: `sudo server-backup`.
   Drin sind: alle Einstellungen (`/etc`, auch die ShopTrail-Zugänge), Caddy samt Zertifikaten, die `.env`-Dateien, die Spiel-Daten und die ShopTrail-Datenbank-Kopien. Die Spiel-Sicherung `/var/backups/pip` läuft wie bisher daneben.
