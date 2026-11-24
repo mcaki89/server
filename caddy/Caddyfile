@@ -1,6 +1,7 @@
 # Zentraler Caddy für mcfactory.ch
 # Caddy holt die HTTPS-Zertifikate selbst (Let's Encrypt), erneuert sie und leitet http:// auf https:// um.
-# Alle vier Adressen gehen an denselben Container mcf-web (Repo pips-journey, Netzwerk "proxy").
+# Die vier mcfactory-Adressen gehen an denselben Container mcf-web (Repo pips-journey, Netzwerk "proxy").
+# flatora.ch geht direkt an flatora-api (Repo flatora), www.flatora.ch leitet auf flatora.ch um.
 # mcf-web verteilt dann selbst weiter: /api und /ws an pip-server, ShopTrail an shoptrail-server.
 # WebSocket (wss://pip.mcfactory.ch/ws) läuft automatisch mit, über Port 443. Spiel-Ports braucht es keine.
 #
@@ -15,4 +16,15 @@ mcfactory.ch, www.mcfactory.ch, pip.mcfactory.ch, shoptrail.mcfactory.ch {
 	reverse_proxy mcf-web:8080
 	# Versionsnummer nicht verraten
 	header -Server
+}
+
+# Flatora (Repo flatora, docker/compose.yaml)
+flatora.ch {
+	encode zstd gzip
+	reverse_proxy flatora-api:8000
+	header -Server
+}
+
+www.flatora.ch {
+	redir https://flatora.ch{uri} permanent
 }

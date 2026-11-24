@@ -52,11 +52,13 @@ export RESTIC_PASSWORD_FILE=/etc/restic/passwort RESTIC_CACHE_DIR=/var/cache/res
 QUELLEN=()
 for p in /etc /opt /root /home /var/lib/shoptrail /var/backups/pip; do [ -e "$p" ] && QUELLEN+=("$p"); done
 
-# Frische, konsistente ShopTrail-Kopie (die laufende Datenbank selbst wird ausgelassen)
+# Frische, konsistente ShopTrail-Kopie (die laufende Datenbank selbst wird ausgelassen).
+# Flatora: Die laufende Datenbank /opt/flatora/postgres wird ebenso ausgelassen, die Kopien in /opt/flatora/backup sind dabei.
 docker exec shoptrail-server node backup.mjs >/dev/null 2>&1 || echo "Hinweis: ShopTrail-Kopie ging nicht, nehme die letzte."
 
 restic backup --one-file-system --tag taeglich \
   --exclude '/var/lib/shoptrail/*.db' --exclude '/var/lib/shoptrail/*.db-*' \
+  --exclude '/opt/flatora/postgres' \
   --exclude 'node_modules' --exclude '/root/.cache' --exclude '/home/*/.cache' \
   "${QUELLEN[@]}"
 rc=$?

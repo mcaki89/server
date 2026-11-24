@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Schritt 6: Container wöchentlich automatisch aktualisieren (Montag 04:30).
-# Holt neue Versionen von Caddy und den Grundbausteinen (nginx, Node) und baut die Apps neu.
+# Holt neue Versionen von Caddy und den Grundbausteinen (nginx, Node, Python, PostgreSQL) und baut die Apps neu.
 # Ändert sich nichts, wird auch nichts neu gestartet. Startet ein neuer Container nicht sauber,
 # kommt automatisch die vorherige Version zurück.
 # Aufruf:  sudo bash /opt/server/einrichten/06-container-updates.sh
@@ -17,7 +17,7 @@ LOG=/var/log/container-update.log
 exec > >(while IFS= read -r z; do printf '%s %s\n' "$(date '+%F %T')" "$z"; done | tee -a "$LOG") 2>&1
 
 # Ordner mit compose.yaml : Art (pull = fertiges Image holen, build = selbst bauen)
-PROJEKTE="${PROJEKTE:-/opt/server/caddy:pull /opt/shoptrail/server/docker:build /opt/pips-journey/docker:build}"
+PROJEKTE="${PROJEKTE:-/opt/server/caddy:pull /opt/shoptrail/server/docker:build /opt/pips-journey/docker:build /opt/flatora/docker:build}"
 FEHLER=0
 # Ohne Zusatz-Angaben (Attestations) bekommt ein unverändertes Image dieselbe ID. Sonst würde jeder Lauf alles neu starten.
 export BUILDX_NO_DEFAULT_ATTESTATIONS=1
@@ -47,7 +47,10 @@ for eintrag in $PROJEKTE; do
   alt=$(for b in $bilder; do docker image inspect -f '{{.Id}}' "$b" 2>/dev/null; done)
 
   if [ "$art" = pull ]; then docker compose pull -q || { echo "!! Holen ging nicht"; FEHLER=1; continue; }
-  else docker compose build --pull -q || { echo "!! Bauen ging nicht, alte Version läuft weiter"; FEHLER=1; continue; }
+  else
+    # Fertige Images im selben Projekt (z. B. die Datenbank von Flatora) auch holen, die selbst gebauten auslassen
+    docker compose pull -q --ignore-buildable || { echo "!! Holen ging nicht, alte Version läuft weiter"; FEHLER=1; continue; }
+    docker compose build --pull -q || { echo "!! Bauen ging nicht, alte Version läuft weiter"; FEHLER=1; continue; }
   fi
   neu=$(for b in $bilder; do docker image inspect -f '{{.Id}}' "$b" 2>/dev/null; done)
   if [ "$alt" = "$neu" ]; then echo "   nichts Neues"; continue; fi

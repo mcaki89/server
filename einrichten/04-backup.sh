@@ -20,12 +20,14 @@ DATEI="$ZIEL/server-$(date +%F).tgz"
 #  /etc                          alle Einstellungen, auch /etc/shoptrail/shoptrail.env und SSH-Schlüssel des Servers
 #  /opt/server/caddy             Caddyfile und Zertifikate von Caddy
 #  /opt/pips-journey/docker/.env und /opt/shoptrail/server/docker/.env
+#  /opt/flatora/docker/.env      Datenbank-Passwort von Flatora
 #  /opt/pip-server/data          Rangliste, Käufe, Sperrliste (wie pip-backup)
+#  /opt/flatora/backup           Flatora-Datenbank-Kopien (macht flatora-sicherung um 03:30 selbst, sicher im laufenden Betrieb)
 #  /var/lib/shoptrail/backup     ShopTrail-Datenbank-Kopien (macht shoptrail-server um 03:30 selbst, sicher im laufenden Betrieb)
 #  /root/.ssh /home/*/.ssh       hinterlegte Anmelde-Schlüssel
 LISTE=()
-for p in /etc /opt/server/caddy /opt/pips-journey/docker/.env /opt/shoptrail/server/docker/.env \
-         /opt/pip-server/data /var/lib/shoptrail/backup /root/.ssh /home/*/.ssh; do
+for p in /etc /opt/server/caddy /opt/pips-journey/docker/.env /opt/shoptrail/server/docker/.env /opt/flatora/docker/.env \
+         /opt/pip-server/data /var/lib/shoptrail/backup /opt/flatora/backup /root/.ssh /home/*/.ssh; do
   [ -e "$p" ] && LISTE+=("$p")
 done
 
