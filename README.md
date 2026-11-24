@@ -1,6 +1,6 @@
 # server – der VPS mcfactory.ch
 
-Hier liegt alles, was den **ganzen Server** betrifft. Die einzelnen Apps (pips-journey, shoptrail) haben ihre `compose.yaml` in ihren eigenen Repos.
+Hier liegt alles, was den **ganzen Server** betrifft. Die einzelnen Apps (pips-journey, shoptrail, flatora) haben ihre `compose.yaml` in ihren eigenen Repos.
 
 ```
 Internet ─► Caddy (dieses Repo, Ports 80/443, holt die Zertifikate selbst)
@@ -10,6 +10,8 @@ Internet ─► Caddy (dieses Repo, Ports 80/443, holt die Zertifikate selbst)
               ├─ mcfactory.ch, www.mcfactory.ch   → Firmenseite
               ├─ pip.mcfactory.ch                 → Projektseite, /api und /ws → pip-server
               └─ shoptrail.mcfactory.ch           → Projektseite, /api … → shoptrail-server (Repo shoptrail)
+           flatora-api :8000  (Repo flatora)
+              └─ flatora.ch (www.flatora.ch leitet um)
 ```
 
 Spiel-Ports gibt es keine: Die Online-Runden laufen per WebSocket über `wss://pip.mcfactory.ch/ws`, also über 443.
@@ -18,7 +20,7 @@ Spiel-Ports gibt es keine: Die Online-Runden laufen per WebSocket über `wss://p
 
 | Datei | Wofür |
 |---|---|
-| `caddy/Caddyfile` | Alle vier Adressen → `mcf-web:8080` |
+| `caddy/Caddyfile` | Die vier mcfactory-Adressen → `mcf-web:8080`, flatora.ch → `flatora-api:8000` |
 | `caddy/compose.yaml` | Der Caddy-Container (einziger mit Ports nach aussen) |
 | `einrichten/01-docker.sh` | Docker installieren, Netzwerk `proxy` anlegen |
 | `einrichten/02-firewall.sh` | ufw: nur SSH, 80 und 443 offen |
@@ -36,5 +38,6 @@ Alle Skripte kann man mehrmals laufen lassen, sie richten jedes Mal denselben St
 
 - compose-Datei im Repo der App, Container im Netzwerk `proxy`, **keine** `ports:` (nur Caddy hat Ports).
 - Neue Adresse im `caddy/Caddyfile` eintragen.
-- Daten und Einstellungen unter `/opt/<app>`. Dann sind sie automatisch in beiden Sicherungen.
+- Daten und Einstellungen unter `/opt/<app>`. Dann sind sie automatisch in der Sicherung ausser Haus. Für die tägliche Sicherung (`einrichten/04-backup.sh`) die `.env` und den Ordner mit den Datenbank-Kopien in `LISTE` ergänzen.
+- Eine laufende Datenbank nicht direkt sichern, sondern täglich eine Kopie machen lassen (Beispiel: Container `flatora-sicherung`) und den Datenbank-Ordner in `07-backup-extern.sh` auslassen.
 - Für die Container-Updates den Ordner in `PROJEKTE` von `einrichten/06-container-updates.sh` ergänzen.

@@ -138,16 +138,22 @@ Docker, Firewall, SSH, Updates und Backups (Teil A) dürfen bleiben, sie stören
 - **Läuft alles?** `sudo docker ps` · Protokoll von Caddy: `sudo docker logs caddy --tail 50`
 - **Caddyfile geändert?** Neue Datei nach `/opt/server/caddy/` kopieren, dann
   `cd /opt/server/caddy && sudo docker compose exec -w /etc/caddy caddy caddy reload` (ohne Unterbruch).
-- **Container-Updates** laufen jeden Montag um 04:30 von selbst (`einrichten/06-container-updates.sh`): Caddy wird neu geholt, mcf-web, pip-server und shoptrail-server werden mit den neusten Grundbausteinen (nginx, Node) neu gebaut. Ist nichts neu, startet auch nichts neu. Läuft eine neue Version nicht sauber, kommt die vorherige automatisch zurück.
+- **Container-Updates** laufen jeden Montag um 04:30 von selbst (`einrichten/06-container-updates.sh`): Caddy wird neu geholt, mcf-web, pip-server, shoptrail-server und Flatora werden mit den neusten Grundbausteinen (nginx, Node, Python) neu gebaut, die Datenbank von Flatora bekommt das neuste PostgreSQL 16. Ist nichts neu, startet auch nichts neu. Läuft eine neue Version nicht sauber, kommt die vorherige automatisch zurück.
   Von Hand: `sudo container-update` · Protokoll: `sudo tail -30 /var/log/container-update.log`
 - **System-Updates** kommen von selbst jede Nacht. Braucht ein Update einen Neustart, startet der Server um 04:00 neu und alle Container laufen danach von selbst wieder.
 - **Sicherungen:** täglich um 03:45 nach `/var/backups/server/server-DATUM.tgz`, 14 Tage lang. Von Hand: `sudo server-backup`.
-  Drin sind: alle Einstellungen (`/etc`, auch die ShopTrail-Zugänge), Caddy samt Zertifikaten, die `.env`-Dateien, die Spiel-Daten und die ShopTrail-Datenbank-Kopien. Die Spiel-Sicherung `/var/backups/pip` läuft wie bisher daneben.
+  Drin sind: alle Einstellungen (`/etc`, auch die ShopTrail-Zugänge), Caddy samt Zertifikaten, die `.env`-Dateien, die Spiel-Daten, die ShopTrail-Datenbank-Kopien und die Flatora-Datenbank-Kopien (`/opt/flatora/backup`, macht `flatora-sicherung` täglich ab 03:30). Die Spiel-Sicherung `/var/backups/pip` läuft wie bisher daneben.
 - **Sicherung auf den Mac holen** (empfohlen etwa einmal pro Woche, denn wenn der VPS ganz ausfällt, sind auch die Sicherungen dort weg):
   auf dem Server `sudo cp /var/backups/server/server-$(date +%F).tgz ~/ && sudo chown $USER ~/server-*.tgz`,
   auf dem Mac `scp murat@mcfactory.ch:'server-*.tgz' ~/Backups/`, danach auf dem Server `rm ~/server-*.tgz`.
 - **Gesperrte IPs (SSH):** `sudo fail2ban-client status sshd`
 - **Überwachung:** UptimeRobot prüft alle 5 Minuten die Seiten und `/api/health` von Pip und ShopTrail (Keyword `"ok":true`) und schickt bei einem Ausfall eine Mail. Fehler im Server selbst (Sicherung, Container-Update, volle Festplatte) meldet der Server per Mail, siehe unten.
+
+---
+
+## Flatora (seit 24.11.2026)
+
+flatora.ch läuft im Container `flatora-api` (Repo flatora, `docker/compose.yaml`), direkt hinter Caddy, ohne mcf-web dazwischen. Daten unter `/opt/flatora`. Einrichten und Alltag: `flatora/docker/ANLEITUNG-DOCKER.md`. Neue Version: `docker/hochladen.command` im Repo flatora doppelklicken.
 
 ---
 
